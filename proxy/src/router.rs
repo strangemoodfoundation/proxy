@@ -93,10 +93,11 @@ impl Middleware for Router {
     fn before_request(
         &mut self,
         req: &mut Request<Body>,
-        context: &ServiceContext,
-        state: &State,
+        _context: &ServiceContext,
+        _state: &State,
     ) -> Result<MiddlewareResult, MiddlewareError> {
         let (host, path, query) = get_host_and_path_and_query(req)?;
+        println!("{}, {}, {}", host, path, query);
 
         let routes = &self.routes;
 

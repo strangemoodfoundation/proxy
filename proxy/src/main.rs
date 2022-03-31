@@ -15,9 +15,11 @@ struct Cli {
 
 #[tokio::main]
 async fn main() {
+    env_logger::init();
+
     let args = Cli::from_args();
 
-    let mut proxy = SimpleProxy::new(args.port, Environment::Development);
+    let mut proxy = SimpleProxy::new(args.port, Environment::Production);
     let auth = router::Router::new(vec![
         Route {
             from: RouteRegex {
@@ -52,7 +54,7 @@ async fn main() {
     proxy.add_middleware(Box::new(cors));
     proxy.add_middleware(Box::new(auth));
 
-    println!("Starting server");
+    println!("Starting server at {}:{}", "localhost", args.port);
     spawn(async move { proxy.run().await });
 
     match signal::ctrl_c().await {
