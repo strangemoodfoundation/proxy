@@ -1,6 +1,7 @@
 use regex::Regex;
 use simple_proxy::{Environment, SimpleProxy};
 use structopt::StructOpt;
+use tokio::{signal, spawn};
 
 use crate::router::{Route, RouteRegex, RouteString};
 
@@ -51,5 +52,14 @@ async fn main() {
     proxy.add_middleware(Box::new(cors));
     proxy.add_middleware(Box::new(auth));
 
-    let _ = proxy.run().await;
+    println!("Starting server");
+    spawn(async move { proxy.run().await });
+
+    match signal::ctrl_c().await {
+        Ok(()) => {}
+        Err(err) => {
+            eprintln!("Unable to listen for shutdown signal: {}", err);
+            // we also shut down in case of error
+        }
+    }
 }
