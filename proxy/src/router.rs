@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use http::uri::{Parts, Uri};
 use http::StatusCode;
 use hyper::header::HeaderValue;
@@ -58,7 +60,12 @@ fn get_host_and_path_and_query(
     match uri.host() {
         Some(host) => Ok((String::from(host), path, query)),
         None => Ok((
-            String::from(req.headers().get("host").unwrap().to_str()?),
+            String::from(
+                req.headers()
+                    .get("host")
+                    .unwrap_or(&HeaderValue::from_static(""))
+                    .to_str()?,
+            ),
             path,
             query,
         )),
@@ -76,8 +83,8 @@ fn forward(
     {
         let headers = req.headers_mut();
 
-        headers.insert("X-Forwarded-Host", HeaderValue::from_str(old_host).unwrap());
-        headers.insert("host", HeaderValue::from_str(host).unwrap());
+        headers.insert("X-Forwarded-Host", HeaderValue::from_str(old_host)?);
+        headers.insert("host", HeaderValue::from_str(host)?);
     }
     let mut parts = Parts::default();
     parts.scheme = Some("http".parse()?);
@@ -106,6 +113,7 @@ impl Middleware for Router {
             let to = &route.to;
 
             if re_host.is_match(&host) {
+                println!("is match {}", &host);
                 // Check if it matches the rule
                 if !(route.rule)(req) {
                     // TODO: maybe rule should return a middleware error?
@@ -126,21 +134,28 @@ impl Middleware for Router {
 
                 let combined = format!("{}?{}", new_path, query);
                 let new_path = if query.is_empty() {
-                    continue;
+                    new_path
                 } else {
-                    combined.as_str()
+                    Cow::from(combined.as_str())
                 };
 
                 println!("Proxying to {} {} ", &new_host, &new_path);
                 forward(req, &host, &new_host, &new_path)?;
 
+                println!("Req is now {:?}", req.uri());
+
                 return Ok(MiddlewareResult::Next);
+            } else {
+                println!("is not match {}", &host);
             }
         }
 
         Err(MiddlewareError::new(
             String::from("No route matched"),
-            Some(String::from("Not found")),
+            Some(format!(
+                "No route matched for {}, {}, {}",
+                host, path, query
+            )),
             StatusCode::NOT_FOUND,
         ))
     }

@@ -4,6 +4,9 @@ kill_signal = "SIGINT"
 kill_timeout = 5
 processes = []
 
+[build]
+image="ipfs/go-ipfs"
+
 [mounts]
 source="ipfs_data"
 destination="/data/ipfs"
@@ -11,9 +14,6 @@ destination="/data/ipfs"
 [env]
 DATA="/data"
 IPFS_PROFILE="server"
-
-[experimental]
-  allowed_public_ports = [4001]
 
 [[services]]
   internal_port = 4001

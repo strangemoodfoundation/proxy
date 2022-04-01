@@ -11,15 +11,11 @@ mod router;
 #[derive(StructOpt, Debug)]
 struct Cli {
     port: u16,
+    to: String,
 }
 
-#[tokio::main]
-async fn main() {
-    env_logger::init();
-
-    let args = Cli::from_args();
-
-    let mut proxy = SimpleProxy::new(args.port, Environment::Production);
+async fn build_proxy(port: u16, to: String) -> Result<SimpleProxy, Box<dyn std::error::Error>> {
+    let mut proxy = SimpleProxy::new(port, Environment::Production);
     let auth = router::Router::new(vec![
         Route {
             from: RouteRegex {
@@ -27,7 +23,7 @@ async fn main() {
                 path: Regex::new("^/api/v0/add(.*)$").unwrap(),
             },
             to: RouteString {
-                host: "localhost:5001".to_string(),
+                host: to.clone(),
                 path: "/api/v0/add".to_string(),
             },
             rule: (|_| true),
@@ -38,7 +34,7 @@ async fn main() {
                 path: Regex::new("^/$").unwrap(),
             },
             to: RouteString {
-                host: "localhost:5001".to_string(),
+                host: to.clone(),
                 path: "/".to_string(),
             },
             rule: (|_| true),
@@ -53,6 +49,17 @@ async fn main() {
 
     proxy.add_middleware(Box::new(cors));
     proxy.add_middleware(Box::new(auth));
+
+    Ok(proxy)
+}
+
+#[tokio::main]
+async fn main() {
+    env_logger::init();
+
+    let args = Cli::from_args();
+
+    let proxy = build_proxy(args.port, args.to).await.unwrap();
 
     println!("Starting server at {}:{}", "localhost", args.port);
     spawn(async move { proxy.run().await });

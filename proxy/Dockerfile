@@ -26,4 +26,4 @@ FROM rust:1.59-slim-buster
 COPY --from=build /proxy/target/release/proxy .
 
 # set the startup command to run your binary
-CMD ["./proxy", "8080"]
+CMD ["./proxy", "8080", "rebase-ipfs.internal:5001"]
